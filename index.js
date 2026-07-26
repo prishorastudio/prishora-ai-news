@@ -9,6 +9,7 @@ const { getLatestNews } = require("./services/news");
 const { chooseBestStory } = require("./services/editor");
 const { writeArticle } = require("./services/writer");
 const { buildKnowledge } = require("./services/knowledge");
+const { assertPublishable } = require("./services/qaEngine");
 
 async function main() {
   console.log("Collecting the latest AI and technology news...\n");
@@ -26,63 +27,83 @@ async function main() {
   const selectedStory = await chooseBestStory(articles);
 
   console.log("Selected Story:");
-console.log(selectedStory);
+  console.log(selectedStory);
 
-console.log("\nBuilding knowledge...\n");
+  console.log("\nBuilding knowledge...\n");
 
-const knowledge = await buildKnowledge(selectedStory);
+  const knowledge = await buildKnowledge(selectedStory);
 
-console.log(knowledge);
+  console.log(knowledge);
 
-console.log("\nWriting article...\n");
+  console.log("\nWriting article...\n");
 
-const article = await writeArticle(knowledge);
+  const article = await writeArticle(knowledge);
 
-console.log(article);
+  console.log(article);
 
-console.log("\nGenerating SEO data...\n");
+  console.log("\nGenerating SEO data...\n");
 
-const seo = await generateSEO(article);
+  const seo = await generateSEO(article);
 
-console.log("\nGenerating featured image prompt...\n");
+  console.log("\nGenerating featured image prompt...\n");
 
-const imageData = await generateImagePrompt({
-  article,
-  seo,
-});
+  const imageData = await generateImagePrompt({
+    article,
+    seo,
+  });
 
-console.log(imageData);
+  console.log(imageData);
 
-const featuredImage = await generateFeaturedImage(imageData, seo);
+  console.log("\nRunning quality checks...\n");
 
-console.log("\nFeatured image created:\n");
-console.log(featuredImage);
+  const qaReport = assertPublishable({ article, seo, imageData });
 
-console.log("\nUploading featured image...\n");
+  console.log(`✅ QA passed with score ${qaReport.score}/100`);
+  console.log(`Word count: ${qaReport.wordCount}`);
 
-const uploadedImage = await uploadImage(featuredImage);
+  if (qaReport.warnings.length) {
+    console.log("QA warnings:");
+    qaReport.warnings.forEach((warning) => console.log(`- ${warning}`));
+  }
 
-console.log("\nFeatured image uploaded:\n");
-console.log(uploadedImage);
+  const featuredImage = await generateFeaturedImage(imageData, seo);
 
-console.log("\nSaving article...\n");
+  console.log("\nFeatured image created:\n");
+  console.log(featuredImage);
 
-const savedFile = saveArticle(article, seo);
+  console.log("\nUploading featured image...\n");
 
-console.log("✅ Article saved to:");
-console.log(savedFile);
+  const uploadedImage = await uploadImage(featuredImage);
 
-console.log("\nPublishing draft to Blogger...\n");
+  console.log("\nFeatured image uploaded:\n");
+  console.log(uploadedImage);
 
-const bloggerPost = await publishToBlogger({
-  article,
-  seo,
-  imageUrl: uploadedImage.imageUrl,
-  imageData,
-});
+  console.log("\nSaving article...\n");
 
-console.log("✅ Blogger draft created:");
-console.log(bloggerPost.url || bloggerPost.id);
+  const savedFile = saveArticle(article, seo);
+
+  console.log("✅ Article saved to:");
+  console.log(savedFile);
+
+  console.log("\nPublishing draft to Blogger...\n");
+
+  const bloggerPost = await publishToBlogger({
+    article,
+    seo,
+    imageUrl: uploadedImage.imageUrl,
+    imageData,
+  });
+
+  console.log("✅ Blogger draft created:");
+  console.log(bloggerPost.url || bloggerPost.id);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  if (error.qaReport) {
+    console.error("❌ QA blocked publishing.");
+    console.error(error.qaReport);
+  }
+
+  console.error(error);
+  process.exitCode = 1;
+});
