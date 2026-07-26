@@ -22,12 +22,16 @@ function scoreStories(articles, config, now = new Date()) {
       );
       const freshness = age <= 6 ? 1 : age <= 24 ? 0.85 : age <= 48 ? 0.65 : age <= 72 ? 0.45 : 0.15;
       const credibility = Number(article.credibility || 0.5);
-      const summaryQuality = article.summary?.length >= 80 ? 0.15 : 0;
-      const score = freshness * 0.55 + credibility * 0.35 + summaryQuality;
+      const summaryQuality = article.summary?.length >= 80 ? 0.1 : 0;
+      const sourceCount = Math.max(1, Number(article.sourceCount || 1));
+      const corroboration = Math.min(0.2, (sourceCount - 1) * 0.08);
+      const score = freshness * 0.45 + credibility * 0.3 + summaryQuality + corroboration;
 
       return {
         ...article,
         ageHours: Math.round(age * 10) / 10,
+        sourceCount,
+        corroborationScore: Math.round(corroboration * 100),
         editorialScore: Math.round(score * 100),
         eligible: !blocked && approved && age <= config.maximumStoryAgeHours,
         rejectionReason: blocked
@@ -53,7 +57,7 @@ async function chooseBestStory(articles, config) {
   const headlines = candidates
     .map(
       (article, index) =>
-        `${index + 1}. ${article.title}\nSource: ${article.source}\nAge: ${article.ageHours} hours\nEditorial score: ${article.editorialScore}`
+        `${index + 1}. ${article.title}\nPrimary source: ${article.source}\nIndependent sources: ${article.sourceCount}\nAge: ${article.ageHours} hours\nEditorial score: ${article.editorialScore}`
     )
     .join("\n\n");
 
@@ -61,8 +65,8 @@ async function chooseBestStory(articles, config) {
 You are the Chief Editor of Prishora AI News.
 
 Choose the single most important, useful, and credible story from this ranked shortlist.
-Prefer stories with clear public impact, original reporting, and long-term relevance.
-Avoid promotional, speculative, repetitive, or weak stories.
+Prefer stories with clear public impact, original reporting, independent corroboration, and long-term relevance.
+Avoid promotional, speculative, repetitive, or weak stories. Treat a story covered by multiple independent sources as stronger evidence, but do not confuse repeated syndication with verification.
 
 ${headlines}
 
