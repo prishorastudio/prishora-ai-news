@@ -50,6 +50,9 @@ const theme = {
     maxWidth: "100%",
     lazyLoading: true,
     showCaption: true,
+    articleMargin: "28px 0",
+    captionMargin: "10px 12px 0",
+    captionSize: "13px",
   },
 
   code: {
@@ -77,6 +80,17 @@ const theme = {
     borderRadius: "12px",
     headerBackground: "#f1f5f9",
     shadow: "0 8px 22px rgba(15,23,42,.08)",
+  },
+
+  callouts: {
+    margin: "26px 0",
+    padding: "17px 19px",
+    borderRadius: "10px",
+    note: { label: "Note", icon: "ℹ️", accent: "#2563eb", border: "#bfdbfe", background: "#eff6ff", text: "#1e3a8a" },
+    tip: { label: "Tip", icon: "💡", accent: "#047857", border: "#a7f3d0", background: "#ecfdf5", text: "#064e3b" },
+    warning: { label: "Warning", icon: "⚠️", accent: "#b45309", border: "#fde68a", background: "#fffbeb", text: "#78350f" },
+    important: { label: "Important", icon: "❗", accent: "#b91c1c", border: "#fecaca", background: "#fef2f2", text: "#7f1d1d" },
+    success: { label: "Success", icon: "✅", accent: "#047857", border: "#a7f3d0", background: "#ecfdf5", text: "#064e3b" },
   },
 
   brand: {
