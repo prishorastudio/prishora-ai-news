@@ -1,50 +1,68 @@
 const { askGemini } = require("./gemini");
+const { formatInternalLinkGuidance } = require("./editorialMemory");
 
-async function writeArticle(knowledge) {
+function formatClaims(claims = []) {
+  if (!claims.length) return "- None supplied";
+  return claims.map((item) => {
+    const claim = typeof item === "string" ? item : item.claim;
+    const confidence = typeof item === "string" ? "unspecified" : item.confidence;
+    const supportedBy = Array.isArray(item.supportedBy) ? item.supportedBy.join(", ") : "";
+    return `- ${claim} [confidence: ${confidence}${supportedBy ? `; sources: ${supportedBy}` : ""}]`;
+  }).join("\n");
+}
+
+async function writeArticle(knowledge, options = {}) {
+  const internalLinks = formatInternalLinkGuidance(options.editorialMemory || []);
+  const primarySource = knowledge.primarySource || {};
+
   const prompt = `
-You are a professional technology journalist writing for Prishora AI & Technology News.
+You are a senior technology journalist writing for Prishora AI & Technology News.
 
-Use the following research brief to write an original article.
+Write an original, evidence-aware article from this research brief.
 
-Headline:
-${knowledge.headline}
+Working headline: ${knowledge.headline || ""}
+Summary: ${knowledge.summary || ""}
+Primary source: ${primarySource.name || "Unknown"} — ${primarySource.url || ""}
 
-Summary:
-${knowledge.summary}
+High-confidence facts:
+${formatClaims(knowledge.verifiedFacts)}
 
-Key Facts:
-${knowledge.keyFacts.map((fact) => `- ${fact}`).join("\n")}
+Single-source claims that require explicit attribution:
+${formatClaims(knowledge.singleSourceClaims)}
 
-Why It Matters:
-${knowledge.whyItMatters}
+Uncertain claims that must not be presented as established fact:
+${formatClaims(knowledge.uncertainClaims)}
+
+Why it matters:
+${knowledge.whyItMatters || ""}
 
 Keywords:
-${knowledge.keywords.join(", ")}
+${(knowledge.keywords || []).join(", ")}
+
+Relevant previous Prishora articles for optional contextual linking:
+${internalLinks}
 
 Requirements:
-- Write between 900 and 1200 words
-- Use natural, professional English
-- Write like an experienced technology journalist, not like a generic AI assistant
-- Create a strong, specific headline
-- Begin with a short, engaging introduction
-- Use clear H2 headings
-- Keep paragraphs short, usually 2 to 4 sentences
-- Vary sentence length and rhythm
-- Avoid repetitive phrases and repeated conclusions
-- Avoid exaggerated claims and dramatic filler
-- Explain the impact on users, businesses, and the technology industry
-- Include a short "Key Takeaways" bullet list after the introduction
-- Use bullet points only where they improve readability
-- Clearly separate confirmed facts from analysis or possible implications
-- Do not invent unsupported details
-- Do not mention the research brief, JSON, prompts, or AI generation
-- End with a concise conclusion
-- Return only the article in Markdown
+- Write between 900 and 1200 words.
+- Return only Markdown.
+- Use a specific, reader-focused headline as the first H1.
+- Open with a concise news lead answering what happened and why it matters.
+- Add a short Key Takeaways bullet list after the introduction.
+- Use at least three clear H2 sections.
+- Attribute material single-source claims in natural language.
+- Clearly label analysis, expectations, and unresolved questions.
+- Do not convert low-confidence claims into facts.
+- Do not fabricate quotations, statistics, dates, organizations, or links.
+- Link to a supplied previous Prishora article only when it is genuinely relevant; never invent an internal URL.
+- Keep paragraphs short and avoid generic AI phrasing, hype, repeated conclusions, and dramatic filler.
+- Explain impact on users, businesses, infrastructure, policy, or the technology industry as applicable.
+- End with a concise forward-looking conclusion that distinguishes known facts from what remains uncertain.
 `;
 
   return askGemini(prompt);
 }
 
 module.exports = {
+  formatClaims,
   writeArticle,
 };
