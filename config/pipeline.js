@@ -19,6 +19,8 @@ const pipeline = {
   minimumMinutesBetweenPosts: numberFromEnv("MINIMUM_MINUTES_BETWEEN_POSTS", 180),
   maximumPostsPerDay: numberFromEnv("MAXIMUM_POSTS_PER_DAY", 3),
   duplicateSimilarityThreshold: numberFromEnv("DUPLICATE_SIMILARITY_THRESHOLD", 0.72),
+  storyClusterThreshold: numberFromEnv("STORY_CLUSTER_THRESHOLD", 0.42),
+  minimumIndependentSources: numberFromEnv("MINIMUM_INDEPENDENT_SOURCES", 1),
   retryAttempts: numberFromEnv("RETRY_ATTEMPTS", 2),
   retryDelayMs: numberFromEnv("RETRY_DELAY_MS", 1500),
   approvedTopics: listFromEnv("APPROVED_TOPICS"),
