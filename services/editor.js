@@ -25,6 +25,8 @@ function scoreStories(articles, config, now = new Date()) {
       const credibility = Number(article.credibility || 0.5);
       const summaryQuality = article.summary?.length >= 80 ? 0.1 : 0;
       const sourceCount = Math.max(1, Number(article.sourceCount || 1));
+      const minimumSources = Math.max(1, Number(config.minimumIndependentSources || 1));
+      const hasEnoughSources = sourceCount >= minimumSources;
       const corroboration = Math.min(0.2, (sourceCount - 1) * 0.08);
       const score = freshness * 0.45 + credibility * 0.3 + summaryQuality + corroboration;
 
@@ -34,21 +36,23 @@ function scoreStories(articles, config, now = new Date()) {
         sourceCount,
         corroborationScore: Math.round(corroboration * 100),
         editorialScore: Math.round(score * 100),
-        eligible: !blocked && approved && age <= config.maximumStoryAgeHours,
+        eligible: !blocked && approved && hasEnoughSources && age <= config.maximumStoryAgeHours,
         rejectionReason: blocked
           ? "blocked topic"
           : !approved
             ? "outside approved topics"
-            : age > config.maximumStoryAgeHours
-              ? "too old"
-              : null,
+            : !hasEnoughSources
+              ? `fewer than ${minimumSources} independent sources`
+              : age > config.maximumStoryAgeHours
+                ? "too old"
+                : null,
       };
     })
     .sort((a, b) => b.editorialScore - a.editorialScore);
 }
 
 async function chooseBestStory(articles, config) {
-  const preScored = scoreStories(articles, config);
+  const preScored = scoreStories(articles, { ...config, minimumIndependentSources: 1 });
   const clustered = clusterStories(preScored, config.storyClusterThreshold ?? 0.42);
   const scored = scoreStories(clustered, config);
   const candidates = scored.filter((article) => article.eligible).slice(0, 10);
