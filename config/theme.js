@@ -44,6 +44,14 @@ const theme = {
     articleWidth: "820px",
   },
 
+  image: {
+    borderRadius: "16px",
+    shadow: "0 12px 32px rgba(0,0,0,.12)",
+    maxWidth: "100%",
+    lazyLoading: true,
+    showCaption: true,
+  },
+
   brand: {
     name: "Prishora Studio",
     publication: "AI & Technology News",
