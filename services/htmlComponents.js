@@ -9,15 +9,18 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
-function buildFeaturedImage({ imageUrl, altText }) {
+function buildFeaturedImage({ imageUrl, altText, caption = "" }) {
   if (!imageUrl) {
     return "";
   }
 
   const loadingAttribute = theme.image.lazyLoading ? ' loading="lazy"' : "";
+  const captionHtml = theme.image.showCaption && caption
+    ? `<figcaption style="margin:${theme.image.captionMargin};color:${theme.colors.muted};font-size:${theme.image.captionSize};line-height:1.55;text-align:center;">${escapeHtml(caption)}</figcaption>`
+    : "";
 
   return `
-    <div style="margin:0 0 24px 0;">
+    <figure style="margin:0 0 24px 0;">
       <img
         src="${escapeHtml(imageUrl)}"
         alt="${escapeHtml(altText)}"
@@ -31,7 +34,8 @@ function buildFeaturedImage({ imageUrl, altText }) {
           box-shadow:${theme.image.shadow};
         "
       />
-    </div>
+      ${captionHtml}
+    </figure>
   `;
 }
 
