@@ -1,10 +1,12 @@
 const { marked } = require("marked");
 const { theme } = require("../config/theme");
 const { calculateReadingTime } = require("../utils/readingTime");
+const { generateTableOfContents } = require("../utils/tocGenerator");
 const {
   buildFeaturedImage,
   buildArticleMeta,
   buildMetaDescription,
+  buildTableOfContents,
   buildAuthorBox,
   buildFooter,
 } = require("./htmlComponents");
@@ -75,7 +77,10 @@ function buildArticleHtml({
     : theme.brand.publication;
   const altText = imageData?.altText || imageData?.imageAlt || title;
   const readingTime = calculateReadingTime(article);
-  const articleHtml = styleArticleMarkup(article || "");
+  const styledArticleHtml = styleArticleMarkup(article || "");
+  const { html: articleHtml, items: tocItems } = generateTableOfContents(
+    styledArticleHtml
+  );
 
   return `
     <article style="
@@ -96,6 +101,7 @@ function buildArticleHtml({
       })}
 
       ${buildMetaDescription(metaDescription)}
+      ${buildTableOfContents(tocItems)}
 
       <div class="prishora-article-content">
         ${articleHtml}
