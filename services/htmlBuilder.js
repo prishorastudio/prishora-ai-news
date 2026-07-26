@@ -2,6 +2,7 @@ const { marked } = require("marked");
 const { theme } = require("../config/theme");
 const { calculateReadingTime } = require("../utils/readingTime");
 const { generateTableOfContents } = require("../utils/tocGenerator");
+const { renderCodeBlock } = require("../utils/codeBlockRenderer");
 const {
   buildFeaturedImage,
   buildArticleMeta,
@@ -26,9 +27,19 @@ function formatPublishedDate(date = new Date()) {
   }).format(parsedDate);
 }
 
+function createMarkdownRenderer() {
+  return {
+    code(token) {
+      return renderCodeBlock(token?.text || "", token?.lang || "");
+    },
+  };
+}
+
 function styleArticleMarkup(markdown = "") {
   return marked
-    .parse(markdown)
+    .parse(markdown, {
+      renderer: createMarkdownRenderer(),
+    })
     .replaceAll(
       "<h2>",
       `<h2 style="margin:${theme.spacing.section} 0 14px;font-size:${theme.typography.h2Size};line-height:1.3;color:${theme.colors.heading};">`
@@ -117,4 +128,5 @@ module.exports = {
   buildArticleHtml,
   formatPublishedDate,
   styleArticleMarkup,
+  createMarkdownRenderer,
 };
