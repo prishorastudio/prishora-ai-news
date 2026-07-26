@@ -1,56 +1,53 @@
 const { askGemini } = require("./gemini");
+const { parseJsonResponse } = require("../utils/jsonResponse");
 
-async function generateImagePrompt({ article, seo }) {
+function normalizeImageData(data = {}) {
+  return {
+    prompt: String(data.prompt || "").trim(),
+    altText: String(data.altText || "").trim(),
+    caption: String(data.caption || "").trim(),
+    visualConcept: String(data.visualConcept || "").trim(),
+    avoidElements: Array.isArray(data.avoidElements) ? data.avoidElements.filter(Boolean) : [],
+  };
+}
+
+async function generateImagePrompt({ article, seo, editorialPlan = {} }) {
   const prompt = `
-You are a creative director for Prishora AI & Technology News.
+You are the Creative Director for Prishora AI & Technology News.
 
-Create one premium featured-image prompt for the following article.
+Create one distinctive premium featured-image package that visually communicates the article's real editorial angle.
 
-SEO Title:
-${seo.seoTitle}
-
-Focus Keyword:
-${seo.focusKeyword}
-
+SEO title: ${seo.seoTitle}
+Focus keyword: ${seo.focusKeyword}
+Editorial angle: ${editorialPlan.primaryAngle || "Not supplied"}
 Article:
 ${article}
 
-Return ONLY valid JSON in this exact format:
-
+Return ONLY valid JSON:
 {
+  "visualConcept": "",
   "prompt": "",
   "altText": "",
-  "caption": ""
+  "caption": "",
+  "avoidElements": []
 }
 
-Image requirements:
-- Premium editorial technology-news style
-- Cinematic and realistic
-- Strong central visual concept
-- Clean professional composition
-- Suitable for a 16:9 blog featured image
-- No logos
-- No watermarks
-- No readable text inside the image
-- Avoid clutter
-- Avoid generic robots unless essential to the story
-- Visually communicate the article's main conflict or development
-- Alt text must clearly describe the image
-- Caption must be one short sentence
-- Return only JSON
-- Do not use Markdown or code fences
+Requirements:
+- Premium editorial technology-news style.
+- Cinematic, realistic, and suitable for a 16:9 featured image.
+- One clear central concept with clean composition.
+- No logos, watermarks, readable text, or clutter.
+- Avoid generic humanoid robots unless essential.
+- Avoid repeating common visual clichés when a more specific concept is possible.
+- Alt text must describe the actual proposed scene clearly.
+- Caption must be one short factual sentence.
+- Return no Markdown or commentary.
 `;
 
-  const response = await askGemini(prompt);
-
-  const cleanResponse = response
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
-
-  return JSON.parse(cleanResponse);
+  return normalizeImageData(parseJsonResponse(await askGemini(prompt), "Creative Director"));
 }
 
 module.exports = {
+  normalizeImageData,
   generateImagePrompt,
 };
