@@ -1,10 +1,32 @@
 const fs = require("fs");
 const path = require("path");
-const { jaccardSimilarity, normalizeText } = require("../utils/textSimilarity");
+const { jaccardSimilarity } = require("../utils/textSimilarity");
 const { historySeed } = require("../config/historySeed");
 
 const historyDir = path.join(__dirname, "..", "output", "history");
 const historyFile = path.join(historyDir, "publishing-history.json");
+
+function normalizeUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+
+  try {
+    const url = new URL(raw);
+    url.hash = "";
+    url.hostname = url.hostname.toLowerCase();
+
+    for (const key of [...url.searchParams.keys()]) {
+      if (key.toLowerCase().startsWith("utm_") || ["fbclid", "gclid"].includes(key.toLowerCase())) {
+        url.searchParams.delete(key);
+      }
+    }
+
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return url.toString();
+  } catch {
+    return raw.toLowerCase().replace(/\/+$/, "");
+  }
+}
 
 function ensureHistory() {
   fs.mkdirSync(historyDir, { recursive: true });
@@ -31,11 +53,11 @@ function writeHistory(entries) {
 }
 
 function isDuplicateStory(article, history, threshold = 0.72) {
-  const link = normalizeText(article?.link);
+  const link = normalizeUrl(article?.link);
   const title = article?.title || "";
 
   for (const entry of history) {
-    if (link && normalizeText(entry.storyUrl) === link) {
+    if (link && normalizeUrl(entry.storyUrl) === link) {
       return { duplicate: true, reason: "same URL", matchedEntry: entry, similarity: 1 };
     }
 
@@ -109,6 +131,7 @@ function recordHistory(entry) {
 
 module.exports = {
   historyFile,
+  normalizeUrl,
   readHistory,
   writeHistory,
   isDuplicateStory,
