@@ -1,56 +1,73 @@
 const { askGemini } = require("./gemini");
 
+function formatSources(story = {}) {
+  const sources = Array.isArray(story.corroboratingSources) && story.corroboratingSources.length
+    ? story.corroboratingSources
+    : [story];
+
+  return sources.map((source, index) => `
+Source ${index + 1}
+Headline: ${source.title || story.title || ""}
+Publisher: ${source.source || "Unknown"}
+Published: ${source.date || "Unknown"}
+URL: ${source.link || "Unknown"}
+Summary: ${source.summary || "Not available"}
+`).join("\n");
+}
+
 async function buildKnowledge(selectedStory) {
   const story = typeof selectedStory === "string"
     ? { title: selectedStory }
     : selectedStory || {};
 
   const prompt = `
-You are an AI Research Analyst.
+You are the senior research analyst for Prishora AI & Technology News.
 
-Analyze this selected story using only the supplied metadata and clearly separate confirmed information from open questions.
+Create an evidence-aware research brief from the supplied source metadata. Compare overlapping claims across sources. Do not assume that repetition proves truth, and never invent missing details.
 
-Headline: ${story.title || ""}
-Source: ${story.source || "Unknown"}
-Published: ${story.date || "Unknown"}
-URL: ${story.link || "Unknown"}
-Feed summary: ${story.summary || "Not available"}
+${formatSources(story)}
 
 Return ONLY valid JSON in this exact structure:
-
 {
   "mode": "news",
   "headline": "",
-  "source": "",
-  "sourceUrl": "",
-  "publishedAt": "",
+  "primarySource": {"name": "", "url": "", "publishedAt": ""},
+  "supportingSources": [{"name": "", "url": "", "publishedAt": ""}],
   "summary": "",
-  "keyFacts": ["", "", ""],
+  "verifiedFacts": [{"claim": "", "confidence": "high", "supportedBy": ["source name"]}],
+  "singleSourceClaims": [{"claim": "", "confidence": "medium", "supportedBy": ["source name"]}],
+  "uncertainClaims": [{"claim": "", "confidence": "low", "reason": ""}],
   "whyItMatters": "",
   "researchQuestions": ["", ""],
   "keywords": ["", "", ""]
 }
 
 Rules:
-- Do not return Markdown or code fences.
-- Do not add text before or after the JSON.
-- Do not invent precise facts that are not supported by the supplied metadata.
-- Treat the feed summary as source material, not as independently verified truth.
-- Put uncertain details inside researchQuestions.
-- Preserve the source URL exactly.
+- Return no Markdown or code fences.
+- High confidence requires clear support from at least two independent supplied sources or an unambiguous primary-source statement.
+- Medium confidence is appropriate for a material claim present in only one credible supplied source.
+- Low confidence is for interpretation, prediction, ambiguity, or unsupported detail.
+- Preserve source URLs exactly.
+- Keep every claim concise and attributable.
 `;
 
   const response = await askGemini(prompt);
-  const cleanResponse = response
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
+  const cleanResponse = response.replace(/```json/g, "").replace(/```/g, "").trim();
 
   try {
     const knowledge = JSON.parse(cleanResponse);
-    knowledge.source = knowledge.source || story.source || "Unknown";
-    knowledge.sourceUrl = story.link || knowledge.sourceUrl || "";
-    knowledge.publishedAt = story.date || knowledge.publishedAt || "";
+    knowledge.primarySource = knowledge.primarySource || {
+      name: story.source || "Unknown",
+      url: story.link || "",
+      publishedAt: story.date || "",
+    };
+    knowledge.supportingSources = Array.isArray(knowledge.supportingSources)
+      ? knowledge.supportingSources
+      : [];
+    knowledge.verifiedFacts = Array.isArray(knowledge.verifiedFacts) ? knowledge.verifiedFacts : [];
+    knowledge.singleSourceClaims = Array.isArray(knowledge.singleSourceClaims) ? knowledge.singleSourceClaims : [];
+    knowledge.uncertainClaims = Array.isArray(knowledge.uncertainClaims) ? knowledge.uncertainClaims : [];
+    knowledge.keywords = Array.isArray(knowledge.keywords) ? knowledge.keywords : [];
     return knowledge;
   } catch (error) {
     console.error("Knowledge Engine Error: Invalid JSON received.");
@@ -60,5 +77,6 @@ Rules:
 }
 
 module.exports = {
+  formatSources,
   buildKnowledge,
 };
