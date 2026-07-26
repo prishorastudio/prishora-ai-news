@@ -1,4 +1,4 @@
-const { marked } = require("marked");
+const { marked, Renderer } = require("marked");
 const { theme } = require("../config/theme");
 const { calculateReadingTime } = require("../utils/readingTime");
 const { generateTableOfContents } = require("../utils/tocGenerator");
@@ -31,18 +31,21 @@ function formatPublishedDate(date = new Date()) {
 }
 
 function createMarkdownRenderer() {
-  return {
-    code(token) {
-      return renderCodeBlock(token?.text || "", token?.lang || "");
-    },
-    image(token) {
-      return renderArticleImage({
-        src: token?.href || "",
-        alt: token?.text || "",
-        caption: token?.title || "",
-      });
-    },
+  const renderer = new Renderer();
+
+  renderer.code = function code(token) {
+    return renderCodeBlock(token?.text || "", token?.lang || "");
   };
+
+  renderer.image = function image(token) {
+    return renderArticleImage({
+      src: token?.href || "",
+      alt: token?.text || "",
+      caption: token?.title || "",
+    });
+  };
+
+  return renderer;
 }
 
 function styleArticleMarkup(markdown = "") {
