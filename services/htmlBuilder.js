@@ -3,6 +3,7 @@ const { theme } = require("../config/theme");
 const { calculateReadingTime } = require("../utils/readingTime");
 const { generateTableOfContents } = require("../utils/tocGenerator");
 const { renderCodeBlock } = require("../utils/codeBlockRenderer");
+const { renderResponsiveTables } = require("../utils/tableRenderer");
 const {
   buildFeaturedImage,
   buildArticleMeta,
@@ -36,7 +37,7 @@ function createMarkdownRenderer() {
 }
 
 function styleArticleMarkup(markdown = "") {
-  return marked
+  const parsedHtml = marked
     .parse(markdown, {
       renderer: createMarkdownRenderer(),
     })
@@ -72,6 +73,8 @@ function styleArticleMarkup(markdown = "") {
       "<a ",
       `<a style="color:${theme.colors.primary};text-decoration:none;" `
     );
+
+  return renderResponsiveTables(parsedHtml);
 }
 
 function buildArticleHtml({
