@@ -7,8 +7,29 @@ function normalizeText(value = "") {
     .trim();
 }
 
+function normalizeToken(token = "") {
+  if (token.length > 4 && token.endsWith("ies")) {
+    return `${token.slice(0, -3)}y`;
+  }
+
+  if (token.length > 4 && token.endsWith("es")) {
+    return token.slice(0, -2);
+  }
+
+  if (token.length > 3 && token.endsWith("s") && !token.endsWith("ss")) {
+    return token.slice(0, -1);
+  }
+
+  return token;
+}
+
 function tokenize(value = "") {
-  return new Set(normalizeText(value).split(" ").filter((token) => token.length > 2));
+  return new Set(
+    normalizeText(value)
+      .split(" ")
+      .filter((token) => token.length > 2)
+      .map(normalizeToken)
+  );
 }
 
 function jaccardSimilarity(left, right) {
