@@ -4,6 +4,8 @@ const { calculateReadingTime } = require("../utils/readingTime");
 const { generateTableOfContents } = require("../utils/tocGenerator");
 const { renderCodeBlock } = require("../utils/codeBlockRenderer");
 const { renderResponsiveTables } = require("../utils/tableRenderer");
+const { renderCallouts } = require("../utils/calloutRenderer");
+const { renderArticleImage } = require("../utils/imageRenderer");
 const {
   buildFeaturedImage,
   buildArticleMeta,
@@ -33,12 +35,20 @@ function createMarkdownRenderer() {
     code(token) {
       return renderCodeBlock(token?.text || "", token?.lang || "");
     },
+    image(token) {
+      return renderArticleImage({
+        src: token?.href || "",
+        alt: token?.text || "",
+        caption: token?.title || "",
+      });
+    },
   };
 }
 
 function styleArticleMarkup(markdown = "") {
+  const markdownWithCallouts = renderCallouts(markdown);
   const parsedHtml = marked
-    .parse(markdown, {
+    .parse(markdownWithCallouts, {
       renderer: createMarkdownRenderer(),
     })
     .replaceAll(
@@ -90,6 +100,7 @@ function buildArticleHtml({
     ? seo.tags[0]
     : theme.brand.publication;
   const altText = imageData?.altText || imageData?.imageAlt || title;
+  const caption = imageData?.caption || imageData?.imageCaption || "";
   const readingTime = calculateReadingTime(article);
   const styledArticleHtml = styleArticleMarkup(article || "");
   const { html: articleHtml, items: tocItems } = generateTableOfContents(
@@ -105,7 +116,7 @@ function buildArticleHtml({
       font-size:${theme.typography.articleSize};
       line-height:${theme.typography.lineHeight};
     ">
-      ${buildFeaturedImage({ imageUrl, altText })}
+      ${buildFeaturedImage({ imageUrl, altText, caption })}
 
       ${buildArticleMeta({
         category,
