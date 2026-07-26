@@ -36,14 +36,24 @@ function buildFeaturedImage({ imageUrl, altText }) {
 }
 
 function buildArticleMeta({
-  category = "AI & Technology",
-  readingTime = "5 min read",
+  category = theme.brand.publication,
+  readingTime = "",
   publishedDate = "",
   author = theme.brand.author,
-}) {
-  const dateHtml = publishedDate
-    ? `<span>${escapeHtml(publishedDate)}</span>`
-    : "";
+} = {}) {
+  const metaItems = [
+    category ? escapeHtml(category) : "",
+    readingTime ? escapeHtml(readingTime) : "",
+    publishedDate ? escapeHtml(publishedDate) : "",
+    author ? `By ${escapeHtml(author)}` : "",
+  ]
+    .filter(Boolean)
+    .map((item) => `<span>${item}</span>`)
+    .join("");
+
+  if (!metaItems) {
+    return "";
+  }
 
   return `
     <div style="
@@ -56,13 +66,11 @@ function buildArticleMeta({
       border:1px solid ${theme.colors.border};
       border-radius:${theme.radius.card};
       color:${theme.colors.muted};
+      font-family:${theme.typography.fontFamily};
       font-size:${theme.typography.metaSize};
       line-height:1.5;
     ">
-      <span>${escapeHtml(category)}</span>
-      <span>${escapeHtml(readingTime)}</span>
-      ${dateHtml}
-      <span>By ${escapeHtml(author)}</span>
+      ${metaItems}
     </div>
   `;
 }
