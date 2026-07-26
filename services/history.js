@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { jaccardSimilarity, normalizeText } = require("../utils/textSimilarity");
+const { historySeed } = require("../config/historySeed");
 
 const historyDir = path.join(__dirname, "..", "output", "history");
 const historyFile = path.join(historyDir, "publishing-history.json");
@@ -8,7 +9,7 @@ const historyFile = path.join(historyDir, "publishing-history.json");
 function ensureHistory() {
   fs.mkdirSync(historyDir, { recursive: true });
   if (!fs.existsSync(historyFile)) {
-    fs.writeFileSync(historyFile, "[]\n", "utf8");
+    fs.writeFileSync(historyFile, `${JSON.stringify(historySeed, null, 2)}\n`, "utf8");
   }
 }
 
