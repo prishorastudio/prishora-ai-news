@@ -9,80 +9,89 @@ const { getLatestNews } = require("./services/news");
 const { chooseBestStory } = require("./services/editor");
 const { writeArticle } = require("./services/writer");
 const { buildKnowledge } = require("./services/knowledge");
+const { assertPublishable } = require("./services/qaEngine");
+const { validateTheme, validateEnvironment } = require("./utils/configValidator");
+const { logger } = require("./utils/logger");
+const { theme } = require("./config/theme");
 
 async function main() {
-  console.log("Collecting the latest AI and technology news...\n");
+  validateTheme(theme);
+  logger.step("Collecting the latest AI and technology news");
 
   const articles = await getLatestNews();
 
-  if (articles.length === 0) {
-    console.log("No news articles were found.");
+  if (!Array.isArray(articles) || articles.length === 0) {
+    logger.warning("No news articles were found.");
     return;
   }
 
-  console.log(`Found ${articles.length} articles.`);
-  console.log("AI Editor is selecting the best story...\n");
-
+  logger.info(`Found ${articles.length} articles.`);
+  logger.step("AI Editor is selecting the best story");
   const selectedStory = await chooseBestStory(articles);
+  logger.info("Selected story", selectedStory);
 
-  console.log("Selected Story:");
-console.log(selectedStory);
+  logger.step("Building knowledge");
+  const knowledge = await buildKnowledge(selectedStory);
 
-console.log("\nBuilding knowledge...\n");
+  logger.step("Writing article");
+  const article = await writeArticle(knowledge);
 
-const knowledge = await buildKnowledge(selectedStory);
+  logger.step("Generating SEO data");
+  const seo = await generateSEO(article);
 
-console.log(knowledge);
+  logger.step("Generating featured-image instructions");
+  const imageData = await generateImagePrompt({ article, seo });
 
-console.log("\nWriting article...\n");
+  logger.step("Running quality assurance");
+  const qaReport = assertPublishable({ article, seo, imageData });
+  logger.success(`QA passed with score ${qaReport.score}/100.`);
+  logger.info(`Word count: ${qaReport.wordCount}`);
+  logger.info(`H2 sections: ${qaReport.h2Count}`);
+  logger.info(`Average sentence length: ${qaReport.readability.averageWordsPerSentence} words`);
 
-const article = await writeArticle(knowledge);
+  qaReport.warnings.forEach((warning) => logger.warning(warning));
 
-console.log(article);
+  validateEnvironment({ requirePublishing: true });
 
-console.log("\nGenerating SEO data...\n");
+  logger.step("Generating featured image");
+  const featuredImage = await generateFeaturedImage(imageData, seo);
 
-const seo = await generateSEO(article);
+  logger.step("Uploading featured image");
+  const uploadedImage = await uploadImage(featuredImage);
 
-console.log("\nGenerating featured image prompt...\n");
+  if (!uploadedImage?.imageUrl) {
+    throw new Error("Image upload completed without returning an image URL.");
+  }
 
-const imageData = await generateImagePrompt({
-  article,
-  seo,
-});
+  logger.step("Saving article locally");
+  const savedFile = saveArticle(article, seo);
+  logger.success(`Article saved to ${savedFile}`);
 
-console.log(imageData);
+  logger.step("Publishing draft to Blogger");
+  const bloggerPost = await publishToBlogger({
+    article,
+    seo,
+    imageUrl: uploadedImage.imageUrl,
+    imageData,
+  });
 
-const featuredImage = await generateFeaturedImage(imageData, seo);
+  if (!bloggerPost?.id && !bloggerPost?.url) {
+    throw new Error("Blogger did not return a post ID or URL.");
+  }
 
-console.log("\nFeatured image created:\n");
-console.log(featuredImage);
-
-console.log("\nUploading featured image...\n");
-
-const uploadedImage = await uploadImage(featuredImage);
-
-console.log("\nFeatured image uploaded:\n");
-console.log(uploadedImage);
-
-console.log("\nSaving article...\n");
-
-const savedFile = saveArticle(article, seo);
-
-console.log("✅ Article saved to:");
-console.log(savedFile);
-
-console.log("\nPublishing draft to Blogger...\n");
-
-const bloggerPost = await publishToBlogger({
-  article,
-  seo,
-  imageUrl: uploadedImage.imageUrl,
-  imageData,
-});
-
-console.log("✅ Blogger draft created:");
-console.log(bloggerPost.url || bloggerPost.id);
+  logger.success(`Blogger draft created: ${bloggerPost.url || bloggerPost.id}`);
 }
 
-main().catch(console.error);
+main().catch((error) => {
+  if (error.qaReport) {
+    logger.error("QA blocked publishing.", error.qaReport);
+  } else {
+    logger.error(error.message || "Pipeline failed.");
+  }
+
+  if (process.env.DEBUG === "true") {
+    console.error(error);
+  }
+
+  process.exitCode = 1;
+});

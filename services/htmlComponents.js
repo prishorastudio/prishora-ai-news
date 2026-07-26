@@ -1,4 +1,5 @@
 const { theme } = require("../config/theme");
+
 function escapeHtml(value = "") {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -8,36 +9,55 @@ function escapeHtml(value = "") {
     .replaceAll("'", "&#039;");
 }
 
-function buildFeaturedImage({ imageUrl, altText }) {
+function buildFeaturedImage({ imageUrl, altText, caption = "" }) {
   if (!imageUrl) {
     return "";
   }
 
+  const loadingAttribute = theme.image.lazyLoading ? ' loading="lazy"' : "";
+  const captionHtml = theme.image.showCaption && caption
+    ? `<figcaption style="margin:${theme.image.captionMargin};color:${theme.colors.muted};font-size:${theme.image.captionSize};line-height:1.55;text-align:center;">${escapeHtml(caption)}</figcaption>`
+    : "";
+
   return `
-    <div style="margin:0 0 24px 0;">
+    <figure style="margin:0 0 24px 0;">
       <img
         src="${escapeHtml(imageUrl)}"
         alt="${escapeHtml(altText)}"
+        ${loadingAttribute}
         style="
           width:100%;
+          max-width:${theme.image.maxWidth};
           height:auto;
           display:block;
-          border-radius:16px;
+          border-radius:${theme.image.borderRadius};
+          box-shadow:${theme.image.shadow};
         "
       />
-    </div>
+      ${captionHtml}
+    </figure>
   `;
 }
 
 function buildArticleMeta({
-  category = "AI & Technology",
-  readingTime = "5 min read",
+  category = theme.brand.publication,
+  readingTime = "",
   publishedDate = "",
-  author = "Prishora Studio",
-}) {
-  const dateHtml = publishedDate
-    ? `<span>${escapeHtml(publishedDate)}</span>`
-    : "";
+  author = theme.brand.author,
+} = {}) {
+  const metaItems = [
+    category ? escapeHtml(category) : "",
+    readingTime ? escapeHtml(readingTime) : "",
+    publishedDate ? escapeHtml(publishedDate) : "",
+    author ? `By ${escapeHtml(author)}` : "",
+  ]
+    .filter(Boolean)
+    .map((item) => `<span>${item}</span>`)
+    .join("");
+
+  if (!metaItems) {
+    return "";
+  }
 
   return `
     <div style="
@@ -46,17 +66,15 @@ function buildArticleMeta({
       gap:10px 18px;
       margin:0 0 24px 0;
       padding:14px 16px;
-      background:#f8fafc;
-      border:1px solid #e5e7eb;
-      border-radius:10px;
-      color:#4b5563;
-      font-size:14px;
+      background:${theme.colors.surface};
+      border:1px solid ${theme.colors.border};
+      border-radius:${theme.radius.card};
+      color:${theme.colors.muted};
+      font-family:${theme.typography.fontFamily};
+      font-size:${theme.typography.metaSize};
       line-height:1.5;
     ">
-      <span>${escapeHtml(category)}</span>
-      <span>${escapeHtml(readingTime)}</span>
-      ${dateHtml}
-      <span>By ${escapeHtml(author)}</span>
+      ${metaItems}
     </div>
   `;
 }
@@ -70,10 +88,10 @@ function buildMetaDescription(metaDescription = "") {
     <p style="
       margin:0 0 26px 0;
       padding:16px 18px;
-      background:#f5f7fa;
-      border-left:4px solid #2563eb;
-      border-radius:8px;
-      color:#374151;
+      background:${theme.colors.surfaceSoft};
+      border-left:4px solid ${theme.colors.primary};
+      border-radius:${theme.radius.small};
+      color:${theme.colors.text};
       font-size:16px;
       line-height:1.7;
     ">
@@ -93,7 +111,7 @@ function buildTableOfContents(items = []) {
         <li style="margin:0 0 8px 0;">
           <a
             href="#${escapeHtml(item.id)}"
-            style="color:#2563eb;text-decoration:none;"
+            style="color:${theme.colors.primary};text-decoration:none;"
           >
             ${escapeHtml(item.text)}
           </a>
@@ -105,15 +123,15 @@ function buildTableOfContents(items = []) {
   return `
     <nav style="
       margin:0 0 30px 0;
-      padding:20px;
-      background:#f8fafc;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
+      padding:${theme.spacing.cardPadding};
+      background:${theme.colors.surface};
+      border:1px solid ${theme.colors.border};
+      border-radius:${theme.radius.card};
     ">
       <strong style="
         display:block;
         margin:0 0 12px 0;
-        color:#111827;
+        color:${theme.colors.heading};
         font-size:18px;
       ">
         Table of Contents
@@ -122,7 +140,7 @@ function buildTableOfContents(items = []) {
       <ol style="
         margin:0 0 0 22px;
         padding:0;
-        color:#374151;
+        color:${theme.colors.text};
       ">
         ${links}
       </ol>
@@ -135,36 +153,35 @@ function buildAuthorBox() {
     <section style="
       margin:36px 0 0 0;
       padding:22px;
-      background:#f8fafc;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
+      background:${theme.colors.surface};
+      border:1px solid ${theme.colors.border};
+      border-radius:${theme.radius.card};
     ">
       <div style="
         margin:0 0 6px 0;
-        color:#111827;
+        color:${theme.colors.heading};
         font-size:20px;
         font-weight:700;
       ">
-        Prishora Studio
+        ${escapeHtml(theme.brand.name)}
       </div>
 
       <div style="
         margin:0 0 10px 0;
-        color:#2563eb;
-        font-size:14px;
+        color:${theme.colors.primary};
+        font-size:${theme.typography.smallSize};
         font-weight:600;
       ">
-        AI &amp; Technology News
+        ${escapeHtml(theme.brand.publication)}
       </div>
 
       <p style="
         margin:0;
-        color:#4b5563;
+        color:${theme.colors.muted};
         font-size:15px;
         line-height:1.7;
       ">
-        Curated coverage of artificial intelligence, technology,
-        cybersecurity, startups and digital innovation.
+        ${escapeHtml(theme.brand.description)}
       </p>
     </section>
   `;
@@ -175,13 +192,13 @@ function buildFooter() {
     <hr style="
       margin:36px 0 20px 0;
       border:none;
-      border-top:1px solid #e5e7eb;
+      border-top:1px solid ${theme.colors.border};
     " />
 
     <p style="
       margin:0;
-      color:#6b7280;
-      font-size:14px;
+      color:${theme.colors.muted};
+      font-size:${theme.typography.smallSize};
       line-height:1.6;
     ">
       Published by ${escapeHtml(theme.brand.name)} | ${escapeHtml(theme.brand.publication)}

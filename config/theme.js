@@ -44,6 +44,55 @@ const theme = {
     articleWidth: "820px",
   },
 
+  image: {
+    borderRadius: "16px",
+    shadow: "0 12px 32px rgba(0,0,0,.12)",
+    maxWidth: "100%",
+    lazyLoading: true,
+    showCaption: true,
+    articleMargin: "28px 0",
+    captionMargin: "10px 12px 0",
+    captionSize: "13px",
+  },
+
+  code: {
+    defaultLanguage: "code",
+    fontFamily: "Consolas, Monaco, 'Courier New', monospace",
+    fontSize: "14px",
+    labelSize: "12px",
+    lineHeight: "1.65",
+    margin: "26px 0",
+    headerPadding: "10px 14px",
+    contentPadding: "18px 20px",
+    borderRadius: "12px",
+    headerBackground: "#0f172a",
+    borderColor: "#334155",
+    labelColor: "#cbd5e1",
+    buttonBorderColor: "#64748b",
+    shadow: "0 10px 24px rgba(15,23,42,.18)",
+  },
+
+  table: {
+    minWidth: "620px",
+    fontSize: "15px",
+    cellPadding: "13px 15px",
+    margin: "26px 0",
+    borderRadius: "12px",
+    headerBackground: "#f1f5f9",
+    shadow: "0 8px 22px rgba(15,23,42,.08)",
+  },
+
+  callouts: {
+    margin: "26px 0",
+    padding: "17px 19px",
+    borderRadius: "10px",
+    note: { label: "Note", icon: "ℹ️", accent: "#2563eb", border: "#bfdbfe", background: "#eff6ff", text: "#1e3a8a" },
+    tip: { label: "Tip", icon: "💡", accent: "#047857", border: "#a7f3d0", background: "#ecfdf5", text: "#064e3b" },
+    warning: { label: "Warning", icon: "⚠️", accent: "#b45309", border: "#fde68a", background: "#fffbeb", text: "#78350f" },
+    important: { label: "Important", icon: "❗", accent: "#b91c1c", border: "#fecaca", background: "#fef2f2", text: "#7f1d1d" },
+    success: { label: "Success", icon: "✅", accent: "#047857", border: "#a7f3d0", background: "#ecfdf5", text: "#064e3b" },
+  },
+
   brand: {
     name: "Prishora Studio",
     publication: "AI & Technology News",

@@ -1,13 +1,21 @@
 {
   "name": "prishora-ai-news",
   "version": "1.0.0",
-  "description": "",
+  "description": "Modular AI news publishing pipeline for Prishora Studio",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "test": "node tests/phase2.test.js",
+    "dry-run": "node scripts/dryRun.js",
+    "phase2:verify": "npm test && npm run dry-run"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "ai-news",
+    "publishing",
+    "blogger",
+    "automation"
+  ],
+  "author": "Prishora Studio",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
@@ -17,6 +25,7 @@
     "cloudinary": "^2.10.0",
     "dotenv": "^17.4.2",
     "googleapis": "^173.0.0",
+    "highlight.js": "^11.11.1",
     "marked": "^18.0.7",
     "rss-parser": "^3.13.0"
   }
