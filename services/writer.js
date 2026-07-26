@@ -1,5 +1,6 @@
 const { askGemini } = require("./gemini");
-const { formatInternalLinkGuidance } = require("./editorialMemory");
+const { formatInternalLinkGuidance, buildEditorialMemory } = require("./editorialMemory");
+const { readHistory } = require("./history");
 
 function formatClaims(claims = []) {
   if (!claims.length) return "- None supplied";
@@ -12,7 +13,11 @@ function formatClaims(claims = []) {
 }
 
 async function writeArticle(knowledge, options = {}) {
-  const internalLinks = formatInternalLinkGuidance(options.editorialMemory || []);
+  const editorialMemory = options.editorialMemory || buildEditorialMemory(
+    { title: knowledge.headline || knowledge.summary || "" },
+    readHistory()
+  );
+  const internalLinks = formatInternalLinkGuidance(editorialMemory);
   const primarySource = knowledge.primarySource || {};
 
   const prompt = `
