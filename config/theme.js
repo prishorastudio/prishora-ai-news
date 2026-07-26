@@ -52,6 +52,23 @@ const theme = {
     showCaption: true,
   },
 
+  code: {
+    defaultLanguage: "code",
+    fontFamily: "Consolas, Monaco, 'Courier New', monospace",
+    fontSize: "14px",
+    labelSize: "12px",
+    lineHeight: "1.65",
+    margin: "26px 0",
+    headerPadding: "10px 14px",
+    contentPadding: "18px 20px",
+    borderRadius: "12px",
+    headerBackground: "#0f172a",
+    borderColor: "#334155",
+    labelColor: "#cbd5e1",
+    buttonBorderColor: "#64748b",
+    shadow: "0 10px 24px rgba(15,23,42,.18)",
+  },
+
   brand: {
     name: "Prishora Studio",
     publication: "AI & Technology News",
