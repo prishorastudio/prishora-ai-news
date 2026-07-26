@@ -69,6 +69,16 @@ const theme = {
     shadow: "0 10px 24px rgba(15,23,42,.18)",
   },
 
+  table: {
+    minWidth: "620px",
+    fontSize: "15px",
+    cellPadding: "13px 15px",
+    margin: "26px 0",
+    borderRadius: "12px",
+    headerBackground: "#f1f5f9",
+    shadow: "0 8px 22px rgba(15,23,42,.08)",
+  },
+
   brand: {
     name: "Prishora Studio",
     publication: "AI & Technology News",
