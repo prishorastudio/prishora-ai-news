@@ -1,4 +1,5 @@
 const { askGemini } = require("./gemini");
+const { clusterStories } = require("./storyCluster");
 
 function hoursOld(date, now = new Date()) {
   const timestamp = new Date(date).getTime();
@@ -47,7 +48,9 @@ function scoreStories(articles, config, now = new Date()) {
 }
 
 async function chooseBestStory(articles, config) {
-  const scored = scoreStories(articles, config);
+  const preScored = scoreStories(articles, config);
+  const clustered = clusterStories(preScored, config.storyClusterThreshold ?? 0.42);
+  const scored = scoreStories(clustered, config);
   const candidates = scored.filter((article) => article.eligible).slice(0, 10);
 
   if (!candidates.length) {
@@ -75,13 +78,7 @@ Return ONLY the candidate number. Do not add any other text.
 
   const response = await askGemini(prompt);
   const selectedIndex = Number.parseInt(String(response).match(/\d+/)?.[0], 10) - 1;
-  const selected = candidates[selectedIndex];
-
-  if (!selected) {
-    return candidates[0];
-  }
-
-  return selected;
+  return candidates[selectedIndex] || candidates[0];
 }
 
 module.exports = {
