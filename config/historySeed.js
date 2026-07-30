@@ -10,7 +10,7 @@ const historySeed = [
   },
   {
     id: "rotation-artificial-intelligence",
-    createdAt: "2026-07-30T19:15:34.120Z",
+    createdAt: "2026-07-28T19:15:34.120Z",
     status: "draft-created",
     bloggerTopic: "Artificial Intelligence",
     storyTitle: "Google says it fixed more Chrome bugs in June than over the past two years, thanks to AI",
@@ -20,7 +20,7 @@ const historySeed = [
   },
   {
     id: "rotation-technology",
-    createdAt: "2026-07-30T19:27:32.143Z",
+    createdAt: "2026-07-29T19:27:32.143Z",
     status: "draft-created",
     bloggerTopic: "Technology",
     storyTitle: "New MCP specification addresses the main barrier to enterprise adoption",
