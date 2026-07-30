@@ -1,0 +1,68 @@
+name: Daily Blogger Publish
+
+on:
+  schedule:
+    # 10:30 UTC = 4:00 PM IST
+    - cron: "30 10 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: daily-blogger-publish
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      BLOGGER_BLOG_ID: ${{ secrets.BLOGGER_BLOG_ID }}
+      GOOGLE_TOKEN_JSON: ${{ secrets.GOOGLE_TOKEN_JSON }}
+      PIPELINE_MODE: publish
+      NEWSROOM_ENABLED: "true"
+      MAXIMUM_POSTS_PER_DAY: "1"
+      MINIMUM_MINUTES_BETWEEN_POSTS: "0"
+      SCHEDULE_TIMEZONE: Asia/Kolkata
+      SCHEDULE_TIMES: "16:00"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Restore publishing history
+        uses: actions/cache@v4
+        with:
+          path: output/history
+          key: publishing-history-${{ github.run_id }}
+          restore-keys: |
+            publishing-history-
+
+      - name: Run automated newsroom
+        run: npm start
+
+      - name: Upload run records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newsroom-run-${{ github.run_id }}
+          path: |
+            output/runs
+            output/articles
+          if-no-files-found: ignore
+          retention-days: 30
