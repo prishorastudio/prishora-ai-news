@@ -10,10 +10,61 @@ const {
   isDuplicateStory,
   filterPreviouslyUsedStories,
 } = require("../services/history");
+const {
+  getNextBloggerTopic,
+  filterStoriesForTopic,
+  ensurePrimaryTopicLabel,
+} = require("../services/topicRotation");
 
 async function run() {
   assert.equal(normalizeText("AI: Power-Grid!"), "ai power grid");
   assert.ok(jaccardSimilarity("AI data center power grid crisis", "Power grid crisis hits AI data centers") >= 0.7);
+
+  assert.equal(getNextBloggerTopic([]), "Artificial Intelligence");
+  assert.equal(
+    getNextBloggerTopic([
+      {
+        createdAt: "2026-07-26T10:00:00.000Z",
+        status: "draft-created",
+        bloggerTopic: "Artificial Intelligence",
+      },
+    ]),
+    "Technology"
+  );
+  assert.equal(
+    getNextBloggerTopic([
+      {
+        createdAt: "2026-07-26T10:00:00.000Z",
+        status: "published",
+        bloggerTopic: "How-To",
+      },
+    ]),
+    "Artificial Intelligence"
+  );
+  assert.equal(
+    getNextBloggerTopic([
+      {
+        createdAt: "2026-07-26T10:00:00.000Z",
+        status: "failed",
+        bloggerTopic: "Artificial Intelligence",
+      },
+    ]),
+    "Artificial Intelligence"
+  );
+
+  const topicStories = filterStoriesForTopic(
+    [
+      { title: "AI story", bloggerTopic: "Artificial Intelligence" },
+      { title: "Gadget story", bloggerTopic: "Gadgets" },
+    ],
+    "Gadgets"
+  );
+  assert.equal(topicStories.length, 1);
+  assert.equal(topicStories[0].title, "Gadget story");
+  assert.deepEqual(
+    ensurePrimaryTopicLabel(["Google", "technology", "Google"], "Technology"),
+    ["Technology", "Google"]
+  );
 
   const historyExisted = fs.existsSync(historyFile);
   const originalHistory = historyExisted ? fs.readFileSync(historyFile, "utf8") : null;
@@ -27,7 +78,6 @@ async function run() {
         storyUrl: "https://example.com/story-one",
       },
     ]);
-
     const history = readHistory();
     assert.equal(history.length, 1);
 
