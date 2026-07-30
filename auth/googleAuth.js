@@ -12,20 +12,39 @@ const SCOPES = [
   "https://www.googleapis.com/auth/drive.file",
 ];
 
-function readCredentials() {
-  const credentials = JSON.parse(
-    fs.readFileSync(CREDENTIALS_PATH, "utf8")
-  );
+function parseJsonEnvironment(name) {
+  const raw = String(process.env[name] || "").trim();
+  if (!raw) return null;
 
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`${name} must contain valid JSON: ${error.message}`);
+  }
+}
+
+function readCredentials() {
+  const environmentCredentials = parseJsonEnvironment("GOOGLE_CREDENTIALS_JSON");
+  if (environmentCredentials) {
+    return environmentCredentials.installed || environmentCredentials.web || environmentCredentials;
+  }
+
+  if (!fs.existsSync(CREDENTIALS_PATH)) {
+    throw new Error(
+      "Google credentials are missing. Provide GOOGLE_CREDENTIALS_JSON or credentials.json."
+    );
+  }
+
+  const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, "utf8"));
   return credentials.installed || credentials.web;
 }
 
-function loadSavedCredentials() {
-  if (!fs.existsSync(TOKEN_PATH)) {
-    return null;
+function createOAuthClientFromToken(token) {
+  if (!token?.client_id || !token?.client_secret || !token?.refresh_token) {
+    throw new Error(
+      "Google token must include client_id, client_secret, and refresh_token."
+    );
   }
-
-  const token = JSON.parse(fs.readFileSync(TOKEN_PATH, "utf8"));
 
   const oauthClient = new google.auth.OAuth2(
     token.client_id,
@@ -37,6 +56,20 @@ function loadSavedCredentials() {
   });
 
   return oauthClient;
+}
+
+function loadSavedCredentials() {
+  const environmentToken = parseJsonEnvironment("GOOGLE_TOKEN_JSON");
+  if (environmentToken) {
+    return createOAuthClientFromToken(environmentToken);
+  }
+
+  if (!fs.existsSync(TOKEN_PATH)) {
+    return null;
+  }
+
+  const token = JSON.parse(fs.readFileSync(TOKEN_PATH, "utf8"));
+  return createOAuthClientFromToken(token);
 }
 
 function saveCredentials(client, clientDetails) {
@@ -59,6 +92,12 @@ async function authorizeGoogle() {
 
   if (savedClient) {
     return savedClient;
+  }
+
+  if (process.env.CI) {
+    throw new Error(
+      "GOOGLE_TOKEN_JSON is required in CI. Add the complete token.json content as an encrypted GitHub Actions secret."
+    );
   }
 
   const clientDetails = readCredentials();
@@ -102,7 +141,6 @@ async function authorizeGoogle() {
           response.end(
             "Google authentication successful. You may close this window."
           );
-
           server.close();
 
           const { tokens } = await oauthClient.getToken(code);
