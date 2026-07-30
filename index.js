@@ -21,6 +21,7 @@ const { withRetry } = require("./utils/retry");
 const { theme } = require("./config/theme");
 const { pipeline } = require("./config/pipeline");
 const { readHistory, filterPreviouslyUsedStories, assertPublishingWindow, recordHistory } = require("./services/history");
+const { getNextBloggerTopic, filterStoriesForTopic, ensurePrimaryTopicLabel } = require("./services/topicRotation");
 const { createRunState, markStage, completeRun } = require("./services/runState");
 
 const VALID_MODES = new Set(["draft", "publish", "local"]);
@@ -50,6 +51,7 @@ async function main() {
   let selectedStory;
   let seo;
   let savedFile;
+  let targetTopic;
 
   try {
     validateTheme(theme);
@@ -58,31 +60,46 @@ async function main() {
 
     const history = readHistory();
     if (pipeline.mode !== "local") assertPublishingWindow(pipeline, history);
+    targetTopic = getNextBloggerTopic(history);
 
     logger.info(`Pipeline mode: ${pipeline.mode.toUpperCase()}`);
     logger.info(`AI Newsroom: ${pipeline.newsroomEnabled ? "ENABLED" : "DISABLED"}`);
+    logger.info(`Scheduled Blogger topic: ${targetTopic}`);
     logger.step("News Scout is collecting stories");
-    const articles = await getLatestNews();
-    markStage(runState, "news-collected", { articleCount: articles.length });
+    const allArticles = await getLatestNews();
+    const articles = filterStoriesForTopic(allArticles, targetTopic);
+    markStage(runState, "news-collected", {
+      articleCount: articles.length,
+      totalCollected: allArticles.length,
+      bloggerTopic: targetTopic,
+    });
 
     if (!Array.isArray(articles) || !articles.length) {
-      completeRun(runState, "skipped", { reason: "No news articles were found." });
-      logger.warning("No news articles were found.");
+      completeRun(runState, "skipped", {
+        reason: `No eligible stories were found for ${targetTopic}.`,
+        bloggerTopic: targetTopic,
+      });
+      logger.warning(`No eligible stories were found for ${targetTopic}. The topic rotation was not advanced.`);
       return;
     }
 
     const duplicateCheck = filterPreviouslyUsedStories(articles, { history, threshold: pipeline.duplicateSimilarityThreshold });
     duplicateCheck.rejected.forEach(({ article, reason, similarity }) => logger.warning(`Skipped duplicate: ${article.title} (${reason}, ${Math.round(similarity * 100)}% match)`));
     if (!duplicateCheck.accepted.length) {
-      completeRun(runState, "skipped", { reason: "All collected stories were previously used." });
-      logger.warning("All collected stories were previously used. No generation was started.");
+      completeRun(runState, "skipped", {
+        reason: `All collected ${targetTopic} stories were previously used.`,
+        bloggerTopic: targetTopic,
+      });
+      logger.warning(`All collected ${targetTopic} stories were previously used. The topic rotation was not advanced.`);
       return;
     }
 
     const clusteredStories = clusterStories(duplicateCheck.accepted, pipeline.storyClusterThreshold);
-    logger.info(`News Scout grouped ${duplicateCheck.accepted.length} eligible reports into ${clusteredStories.length} story clusters.`);
-    logger.step("News Scout is selecting the strongest story cluster");
+    logger.info(`News Scout grouped ${duplicateCheck.accepted.length} eligible ${targetTopic} reports into ${clusteredStories.length} story clusters.`);
+    logger.step(`News Scout is selecting the strongest ${targetTopic} story cluster`);
     selectedStory = await chooseBestStory(clusteredStories, pipeline);
+    selectedStory.bloggerTopic = targetTopic;
+    selectedStory.category = targetTopic;
     logger.info("Selected story", selectedStory.title);
     markStage(runState, "story-selected", {
       storyTitle: selectedStory.title,
@@ -90,12 +107,13 @@ async function main() {
       source: selectedStory.source,
       sourceCount: selectedStory.sourceCount || 1,
       editorialScore: selectedStory.editorialScore,
+      bloggerTopic: targetTopic,
     });
 
     const editorialMemory = buildEditorialMemory(selectedStory, history);
     logger.step("Research Analyst is building the evidence brief");
     const knowledge = await buildKnowledge(selectedStory);
-    markStage(runState, "knowledge-built", { sourceCount: selectedStory.sourceCount || 1 });
+    markStage(runState, "knowledge-built", { sourceCount: selectedStory.sourceCount || 1, bloggerTopic: targetTopic });
 
     let factCheck = { confidenceScore: 100, publishable: true, confirmedClaims: [], attributedClaims: [], uncertainClaims: [], blockedClaims: [], verificationNotes: [] };
     let editorialPlan = {};
@@ -115,7 +133,14 @@ async function main() {
 
     logger.step("SEO Editor is preparing and selecting headlines");
     seo = await generateSEO(article, { editorialPlan });
-    markStage(runState, "seo-generated", { slug: seo.slug, seoTitle: seo.seoTitle, titleCandidates: seo.titleCandidates });
+    seo.tags = ensurePrimaryTopicLabel(seo.tags, targetTopic);
+    markStage(runState, "seo-generated", {
+      slug: seo.slug,
+      seoTitle: seo.seoTitle,
+      titleCandidates: seo.titleCandidates,
+      bloggerTopic: targetTopic,
+      tags: seo.tags,
+    });
 
     logger.step("Creative Director is preparing the featured-image concept");
     const imageData = await generateImagePrompt({ article, seo, editorialPlan });
@@ -135,8 +160,15 @@ async function main() {
     markStage(runState, "article-saved", { savedFile });
 
     if (pipeline.mode === "local") {
-      const reportFile = completeRun(runState, "local-complete", { storyTitle: selectedStory.title, storyUrl: selectedStory.link, savedFile, qaScore: qaReport.score, factConfidence: factCheck.confidenceScore });
-      logger.success(`Local-only run completed. Report: ${reportFile}`);
+      const reportFile = completeRun(runState, "local-complete", {
+        storyTitle: selectedStory.title,
+        storyUrl: selectedStory.link,
+        savedFile,
+        qaScore: qaReport.score,
+        factConfidence: factCheck.confidenceScore,
+        bloggerTopic: targetTopic,
+      });
+      logger.success(`Local-only run completed. Topic rotation was not advanced. Report: ${reportFile}`);
       return;
     }
 
@@ -164,6 +196,7 @@ async function main() {
     const finalStatus = isDraft ? "draft-created" : "published";
     const historyRecord = recordHistory({
       status: finalStatus,
+      bloggerTopic: targetTopic,
       storyTitle: selectedStory.title,
       storyUrl: selectedStory.link,
       source: selectedStory.source,
@@ -182,6 +215,7 @@ async function main() {
     });
 
     const reportFile = completeRun(runState, finalStatus, {
+      bloggerTopic: targetTopic,
       storyTitle: selectedStory.title,
       storyUrl: selectedStory.link,
       seoTitle: seo.seoTitle,
@@ -195,10 +229,19 @@ async function main() {
     });
 
     logger.success(`${isDraft ? "Blogger draft created" : "Blogger post published"}: ${bloggerPost.url || bloggerPost.id}`);
+    logger.info(`Completed Blogger topic: ${targetTopic}`);
     logger.info(`Post ID: ${bloggerPost.id || "Not returned"}`);
     logger.info(`Run report: ${reportFile}`);
   } catch (error) {
-    completeRun(runState, "failed", { failedStage: runState.stage, error: error.message, storyTitle: selectedStory?.title || null, storyUrl: selectedStory?.link || null, seoTitle: seo?.seoTitle || null, savedFile: savedFile || null });
+    completeRun(runState, "failed", {
+      failedStage: runState.stage,
+      error: error.message,
+      bloggerTopic: targetTopic || null,
+      storyTitle: selectedStory?.title || null,
+      storyUrl: selectedStory?.link || null,
+      seoTitle: seo?.seoTitle || null,
+      savedFile: savedFile || null,
+    });
     throw error;
   }
 }
